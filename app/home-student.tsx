@@ -1,7 +1,7 @@
 // app/home-student.tsx
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 
 export default function HomeStudentScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -22,53 +23,56 @@ export default function HomeStudentScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        if (!id || typeof id !== 'string') {
-          setError('ID de sesión inválido');
-          setLoading(false);
-          return;
-        }
-
-        const userRes = await fetch(`https://api-ep-3czc.onrender.com/api/usuarios/${id}`);
-        const userJson = await userRes.json();
-
-        if (userRes.ok && userJson?.nombre) {
-          setUserData(userJson);
-        } else {
-          setError(userJson.error || 'Usuario no encontrado');
-          return;
-        }
-
-        const citasRes = await fetch(`https://api-ep-3czc.onrender.com/api/citas/${id}`);
-        const citasJson = await citasRes.json();
-
-        if (citasRes.ok && Array.isArray(citasJson)) {
-          // Aseguramos que estado exista para clasificación visual
-          const citasProcesadas = citasJson.map((c: any) => ({
-            id: c.id || c._id,
-            profesional: c.profesional,
-            rolProfesional: c.rolProfesional,
-            tipo: c.tipo,
-            fecha: c.fecha,
-            motivo: c.motivo,
-            estado: c.estado || 'programada',
-          }));
-          setAppointments(citasProcesadas);
-        } else {
-          setAppointments([]);
-        }
-      } catch (err) {
-        console.error('Error de conexión:', err);
-        setError('Error de conexión con la API');
-      } finally {
+  // Función de fetch extraída (se usa en useFocusEffect)
+  const fetchData = async () => {
+    try {
+      if (!id || typeof id !== 'string') {
+        setError('ID de sesión inválido');
         setLoading(false);
+        return;
       }
-    };
 
-    if (id) fetchData();
-  }, [id]);
+      const userRes = await fetch(`https://api-ep-3czc.onrender.com/api/usuarios/${id}`);
+      const userJson = await userRes.json();
+
+      if (userRes.ok && userJson?.nombre) {
+        setUserData(userJson);
+      } else {
+        setError(userJson.error || 'Usuario no encontrado');
+        return;
+      }
+
+      const citasRes = await fetch(`https://api-ep-3czc.onrender.com/api/citas/${id}`);
+      const citasJson = await citasRes.json();
+
+      if (citasRes.ok && Array.isArray(citasJson)) {
+        const citasProcesadas = citasJson.map((c: any) => ({
+          id: c.id || c._id,
+          profesional: c.profesional,
+          rolProfesional: c.rolProfesional,
+          tipo: c.tipo,
+          fecha: c.fecha,
+          motivo: c.motivo,
+          estado: c.estado || 'programada',
+        }));
+        setAppointments(citasProcesadas);
+      } else {
+        setAppointments([]);
+      }
+    } catch (err) {
+      console.error('Error de conexión:', err);
+      setError('Error de conexión con la API');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Refetch cada vez que la pantalla recibe foco (al volver tras crear una cita)
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+    }, [id])
+  );
 
   if (loading) {
     return (
@@ -194,7 +198,7 @@ export default function HomeStudentScreen() {
           <FlatList
             data={citasFuturas}
             renderItem={renderAppointment}
-            keyExtractor={(item) => item.id || Math.random().toString()}
+            keyExtractor={(item) => String(item.id)}
             ListEmptyComponent={<Text>No tienes citas futuras.</Text>}
           />
         </View>
@@ -204,7 +208,7 @@ export default function HomeStudentScreen() {
           <FlatList
             data={citasPasadas}
             renderItem={renderAppointment}
-            keyExtractor={(item) => item.id || Math.random().toString()}
+            keyExtractor={(item) => String(item.id)}
             ListEmptyComponent={<Text>No hay citas anteriores.</Text>}
           />
         </View>
@@ -265,6 +269,7 @@ const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
   errorText: { fontSize: 16, color: 'red', textAlign: 'center' },
 });
+
 
 
 
