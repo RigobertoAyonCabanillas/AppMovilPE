@@ -34,10 +34,17 @@ export default function LoginScreen() {
 
       const data = await response.json();
       if (response.ok) {
+        // Redirecciones según rol
         if (data.rol === 'estudiante') {
           router.replace({ pathname: '/home-student', params: { id: data.id } });
         } else if (data.rol === 'enfermero' || data.rol === 'psicologo') {
           router.replace({ pathname: '/home-admin', params: { id: data.id } });
+        } else if (data.rol === 'administrador' || data.rol === 'admin') {
+          // Redirigir al panel de administración (lista de usuarios)
+          router.replace({ pathname: '/admin-edit-user', params: { id: data.id } });
+        } else {
+          // Rol desconocido: mostrar mensaje y no redirigir
+          Alert.alert('Acceso denegado', 'Tu rol no tiene acceso a la aplicación.');
         }
       } else {
         Alert.alert('Error de Login', data.error || 'Credenciales incorrectas.');
@@ -60,11 +67,9 @@ export default function LoginScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.loginContainer}>
-        {/* Icono de salud y título */}
         <Ionicons name="medkit-outline" size={80} color="#007BFF" style={{ alignSelf: 'center', marginBottom: 10 }} />
         <Text style={styles.title}>SaludEscolar</Text>
 
-        {/* Inputs */}
         <TextInput
           style={styles.input}
           placeholder="Nombre"
@@ -79,7 +84,6 @@ export default function LoginScreen() {
           secureTextEntry
         />
 
-        {/* Botón */}
         <Button title="Entrar" onPress={handleLogin} />
       </View>
     </SafeAreaView>
@@ -93,4 +97,5 @@ const styles = StyleSheet.create({
   title: { fontSize: 28, fontWeight: 'bold', marginBottom: 20, textAlign: 'center', color: '#007BFF' },
   input: { height: 40, borderColor: '#ccc', borderWidth: 1, borderRadius: 5, marginBottom: 15, paddingHorizontal: 10 }
 });
+
 
